@@ -6,7 +6,7 @@
 
 This study examines the relationships between mental health and household tasks across 
 respondents' sex. Using the 2017 General Social Survey, analyses find that mental health vary between male 
-and female respondents, depending on the task. Below, information is included about how to use the 
+and female respondents, depending on the household task. Below, information is included about how to use the 
 files provided to reproduce the analyses leading to this conclusion.
 
 ***
@@ -39,11 +39,11 @@ Statistics Canada. 2020. General Social Survey, Cycle 31, 2017 [Canada]: Family 
 
 ### Files Included
 
-### Instructions for Data Preparation and Analysis
+### Instructions for Data Preparation and Analysis - still troubleshooting
 To reproduce the analyses conducted here, download the zip file of this project. 
 The zip file will create the folder "CAnD3-Data-Activity." This folder will be 
 your working directory. Once you obtain access to the dataset, rename it 
-"gss_2017.csv" and save it in the working directory (CAnD3-Data-Activity). Open and 
+"gssraw.csv" and save it in the working directory (CAnD3-Data-Activity). Open and 
 run (knit) the shell file ('Shell File.Rmd'). This file calls on the individual 
 script files to clean the data, manage missing data, and produce the descriptive 
 and regression tables.  
@@ -58,8 +58,7 @@ and regression tables.
 The following software programs are required to reproduce these analyses:  
 
 * R and Rstudio (version 1.4.1717) and the following packages as of 9/22/21
-    + tidyverse  
-    + haven  
+    + tidyverse   
     + skimr  
     + naniar  
     + Hmisc  
@@ -70,4 +69,4 @@ The following software programs are required to reproduce these analyses:
 ***
 
 ### Machine Information
-These analyses were conducted using Mac OS Catalina   
+These analyses were conducted using Mac OS Big Sur 
