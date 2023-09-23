@@ -1,0 +1,236 @@
+---
+title: "Data Reproducibility Assignment"
+output: html_notebook
+---
+
+
+#load the libraries needed for cleaning & analysis
+```{r}
+#options(repos = c(REPO_NAME = "https://packagemanager.rstudio.com/cran/latest"))
+#install.packages('gtsummary', repos='http://cran.rstudio.com/')
+#install.packages('sjlabelled', repos='http://cran.rstudio.com/')
+#install.packages('Hmisc', repos='http://cran.rstudio.com/')
+#install.packages('latticeExtra', repos='http://cran.rstudio.com/')
+#library(packrat)
+library(tidyverse)
+library(haven)
+library(sjlabelled) #helps with labelled data
+library(skimr) #to glance at the dataset
+library(naniar) #for missing data
+library(sjlabelled)
+library(Hmisc)
+library(gt)
+library(gtsummary)
+
+#clean up unneccessary libraries to keep my library tidy
+#packrat::snapshot()
+#packrat::clean() #removes unneeded packages from project library
+
+#check internal library - The following packages are used in your code, tracked by packrat, but no longer present in your library
+#packrat::status()
+
+#redirects project to the correct working directory
+#packrat::init()
+
+#Share a Packrat project with bundle and unbundle:
+#packrat::bundle(): Bundle a packrat project, for easy sharing.
+#packrat::unbundle(): Unbundle a packrat project, generating a project directory with libraries restored.
+```
+
+
+#load the data & select variables
+```{r}
+#load data
+#gssraw = read_csv(".../raw/gss.csv")
+gssraw <-as_tibble(gssraw)
+
+#select variables
+#Groupe Organization and decision making within the household
+
+gssdata = gssraw %>%
+  select(c(COM_105, #Division of chores - Meal preparation
+           COM_110, #Who in your couple mainly takes care of:doing housework, like vacuum- cleaning the house?
+           COM_115, #Who in your couple mainly takes care of:doing the dishes (including automatic dishwasher tasks)?
+           COM_120,#Who in your couple mainly takes care of:doing the laundry?
+           COM_125, #Who in your couple mainly takes care of:doing the grocery shopping?
+           COM_130, #Who in your couple mainly takes care of:doing the gardening?
+           COM_135, #Who in your couple mainly takes care of:doing outside work, like repairs?
+           COM_140, #Who in your couple mainly takes care of:organizing the household’s social life, for example, invitations for family and social oc-casions, outings, and keeping contacts?
+           COM_145, #Who in your couple mainly takes care of:the household finances and paying the bills?
+           COM_150, #Who in your couple mainly makes decisions regarding:daily household purchases?
+           COM_155, #Who in your couple mainly makes decisions regarding:occasional more expensive purchases for the household?
+           COM_200, #Do you have bank accounts in your sole name only, held in joint names with your(spouse/partner), or do you have both sole and jointly held accounts?
+           COM_212, #Overall, how would you describe the way you and your spouse/partner share householdexpenses? Are your contributions...?
+           SRH_115,                   # Self-Rated Mental Health
+           EHG3_01B,                  # Highest Educational Attainment
+           AGEC,                      # Respondent's Age in Years
+           SEX,                       # Respondent's Sex
+           MARSTAT,                   # Marital Status
+           FAMINCG2,                  # Family Income
+           CHRINHDC,                  # Number of Children in Household
+           WGHT_PER))                 # Individual Survey Weight
+
+```
+
+#rename the variables
+```{r}
+colnames(gssdata) <- tolower(colnames(gssdata))
+
+```
+
+#Distribution of data check
+```{r}
+
+gssdata %>% skim()
+
+```
+
+#recode the variables
+```{r}
+  # Self-Rated Mental Health (Ordinal)
+      # Coded Excellent (1) - Poor (5)
+gssdata = gssdata %>% 
+  mutate(srh = srh_115)
+
+#gssdata %>% count(srh, srh_115)
+
+
+# Educational Attainment (Ordinal)
+      # Coded HS or Less (1) | Some College (2) | Bachelor's + (3)
+gssdata <- gssdata %>% 
+  mutate(edatt = ehg3_01b,
+         edatt = case_when(edatt <= 2                ~ 1,    # HS or Less
+                          (edatt >= 3 & edatt <= 5)  ~ 2,    # Some College
+                          (edatt >= 6 & edatt <= 7)  ~ 3),   # Bachelor's +
+         edatt = as_factor(edatt))
+
+#gssdata %>% count(edatt, ehg3_01b)
+
+
+ #Age in Years (Continuous; capped at 80)
+gssdata = gssdata %>% mutate(age = agec)
+
+
+# Sex (Binary)
+      # Coded Male (0) | Female (1)
+gssdata <- gssdata %>% mutate(sex = sex-1)
+
+
+#gssdata %>% count(sex)
+
+
+# Marital Status (Changing from Nominal to Dichotomous)
+      # Married/Common Law = Married (1) | All Else = Not Married (0)
+gssdata = gssdata %>% mutate(married = marstat,
+                      married = case_when(marstat == 1 | marstat == 2 ~ 1,
+                                          marstat >= 3 & marstat <= 6 ~ 0))
+
+#gssdata %>% count(married, marstat)
+
+# Family Income (Ordinal)
+      # Values are: 1) Less than $25k; 2) $25k to $49.999k; 3) $50k to 74.999k;
+      #             4) $75k to $99.999k; 5) $100k to $124.999k; 6) $125k or more
+gssdata = gssdata %>% mutate(faminc = as.numeric(famincg2))
+#gssdata %>% count(faminc)
+
+# Number of Children in Household (Discrete)
+gssdata = gssdata %>% mutate(kidsinhh =  as.numeric(chrinhdc))
+#gssdata %>% count(kidsinhh)
+
+# Division of chores - Meal preparation (Discrete)
+gssdata = gssdata %>% mutate(mealprep =  as.numeric(com_105))
+#gssdata %>% count(mealprep)
+
+#Division of chores - housework
+gssdata = gssdata %>% mutate(housework =  as.numeric(com_110))
+#gssdata %>% count(housework)
+
+#Division of chores - dishes
+gssdata = gssdata %>% mutate(dishes =  as.numeric(com_115))
+#gssdata %>% count(dishes)
+
+#Division of chores - laundry
+gssdata = gssdata %>% mutate(laundry =  as.numeric(com_120))
+#gssdata %>% count(laundry)
+
+#Division of chores - grocery shopping
+gssdata = gssdata %>% mutate(groceries =  as.numeric(com_125))
+#gssdata %>% count(groceries)
+
+#Division of chores - gardening
+gssdata = gssdata %>% mutate(gardening =  as.numeric(com_130))
+#gssdata %>% count(gardening)
+
+#Division of chores - outdoor work
+gssdata = gssdata %>% mutate(outdoorwork =  as.numeric(com_135))
+#gssdata %>% count(outdoorwork)
+
+#Division of chores - social life
+gssdata = gssdata %>% mutate(sociallife =  as.numeric(com_140))
+#gssdata %>% count(sociallife)
+
+##Division of chores - household_finance
+gssdata = gssdata %>% mutate(finance =  as.numeric(com_145))
+#gssdata %>% count(finance)
+
+```
+#make the clean data set
+```{r}
+gssclean <- gssdata %>% select(c(srh,           
+                        edatt,           
+                        age,             
+                        sex,             
+                        married,         
+                        faminc,          
+                        kidsinhh, 
+                        mealprep,
+                        dishes,
+                        housework, 
+                        groceries,
+                        laundry,
+                        gardening,
+                        outdoorwork,
+                        finance,
+                        wght_per))  
+
+```
+
+#rename the variables
+```{r}
+  # Variable Labels
+label(gssclean$srh) = 'Self-Rated Mental Health'
+label(gssclean$edatt) = 'Educational Attainment'
+label(gssclean$mealprep) = 'Meal Prep Time Allocation'
+label(gssclean$groceries) = 'Grocery Time Allocation'
+label(gssclean$outdoorwork) = 'Outdoor Chores Time Allocation'
+label(gssclean$finance) = 'Managing Finances'
+label(gssclean$laundry) = 'Laundry Time Allocation'
+label(gssclean$gardening) = 'Gardening Time Allocation'
+label(gssclean$age)       = 'Age'
+label(gssclean$sex)       = 'Female'
+label(gssclean$married)   = 'Marital Status'
+label(gssclean$faminc)    = 'Household Income'
+label(gssclean$kidsinhh)  = 'Number of Children in Household'
+label(gssclean$wght_per)  = 'Person-Weight'
+```
+
+#deal with missing data
+```{r}
+# CODING DATA VALUES AS MISSING
+    # Note: Variables not included have no missing data or were already coded 
+    # in the cleaning stage
+gssclean <- gssclean %>% replace_with_na(replace = list(srh = c(7, 8, 9)))
+
+
+# CREATING SAMPLE VARIABLE FOR ANALYSES
+    # Will use this variable to filter out cases missing any data
+gssclean = gssclean %>% mutate(sampmiss = rowSums(is.na(.)))
+
+#gssclean %>% count(sampmiss)
+
+# SAMPLE DATASET WHICH EXCLUDES MISSING DATA (LISTWISE DELETION)
+sample <- gssclean %>% filter(sampmiss == 0)
+
+
+```
+
