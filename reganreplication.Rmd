@@ -1,0 +1,135 @@
+---
+title: "Chris_replicabilitytest"
+author: "Regan Johnston"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#following Chris's code instructions from the program file
+
+```{r}
+#Clean GSS-Family data to extract or create variables relevant for analysis.
+#1.1. Select cases where Respondent:
+#1.1.1. has children (TOTCHDC);
+#1.1.2. at least one of those children lives with Respondent at least part-Ome
+#(HHDSTA*);
+#1.1.3. at least one of those children is 12 years of age or less (ACHD_*C).
+
+library(tidyverse)
+library(readr)
+gssfamily = read_csv("gssdata.csv")
+
+gssclean = gassraw %>%
+  filter(TOTCHDC != 0|
+        TOTCHDC != 97,
+        TOTCHDC != 98,
+        TOTCHDC != 99)
+
+gssclean = gssclean %>%
+  filter(HHDCHD1 == 1)
+
+gssclean1 = gssclean %>%
+  filter(ACHD_1C < 13 |ACHD_2C < 13 | ACHD_3C < 13 | ACHD_4C < 13 | ACHD_5C < 13 |ACHD_6C < 13 | ACHD_7C < 13)
+      
+```
+
+
+```{r}
+
+#Select demographic variables – Respondent’s age (AGEC), gender (SEX), marital status
+#(MARSTAT), family income (FAMINCG2), educaOon (EHG3_01B), place of birth
+#(BRTHCAN), visible minority status (VISMIN), and parOcipaOon in religious acOviOes
+#(REE_02) – and the child care variables (CC_10_*, CC_20_*, CC_30_*, CC_40_*, CP_10_*, CP_20_*).
+
+gssclean2 = gssclean1 %>%
+  select(AGEC, SEX, MARSTAT, FAMINCG2, EHG3_01B, BRTHFCAN, VISMIN, REE_02, CC_10_1, CC_10_2, CC_10_3,CC_10_4,CC_10_5, CC_10_6, CC_10_7, CC_20_1,CC_20_2, CC_20_3,CC_20_4,CC_20_5, CC_20_6, CC_20_7,CC_30_1, CC_30_2, CC_30_3,CC_30_4,CC_30_5, CC_30_6, CC_30_7, CC_40_1, CC_40_2, CC_40_3,CC_40_4,CC_40_5, CC_40_6, CC_40_7, CP_10_1, CP_10_2, CP_10_3,CP_10_4,CP_10_5, CP_10_6, CP_10_7, CP_20_1, CP_20_2, CP_20_3, CP_20_4,CP_20_5, CP_20_6, CP_20_7)
+
+#Create the dependent variable (cc_pref) in a new data frame (final_data), such that thecategories of that variable are the same as those in the exisOng child care preference variables (CP_20_*), but where, if the Respondent doesn’t want to change their current arrangements (CP_10_*), the current child care arrangement variables (CC_10_*, CC_20_*, CC_30_*, CC_40_*) are used to assign equivalent categories. Given that can be up to 7 such preferences expressed, take the preference for the last child listed (presumed to be the youngest) as the single preference for the Respondent.
+
+#regan - I'm not sure what is to be done with the dependent variable - the instructions are difficult to follow - I don't know what "assign equivalent categories" means
+ 
+final_data = gssclean2 %>%
+  filter(CP_10_1 == 2 | CP_10_2 == 2 | CP_10_3 == 2 | CP_10_4 == 2 | CP_10_5 == 2 |
+           CP_10_6 == 2 | CP_10_7 == 2)
+
+#Recode demographic variables into the new data frame such that:
+#1.4.1. binary variables (gender, place of birth, visible minority) are Boolean (Female, Canada, Yes as TRUE);
+final_data = final_data %>% 
+mutate(age = as.numeric(AGEC))
+
+final_data = final_data %>%
+ mutate(birth_place = if_else(BRTHFCAN == "Canada", 'TRUE', 'FALSE',  missing = NULL))
+         
+final_data = final_data %>%
+mutate(female = if_else(SEX == "2", 'TRUE', 'FALSE',  missing = NULL))
+
+#i think you want visible minority as true but its unclear from the instructions
+final_data = final_data %>%
+mutate(VM = if_else(VISMIN == "1", 'TRUE', 'FALSE',  missing = NULL))
+
+
+#1.4.2. marital status is collapsed and reordered to Single; Married OR Common-law; Widowed, Divorced or Separated;
+
+final_data = final_data %>%
+  mutate(marstatus = case_when(MARSTAT == 1 | MARSTAT == 2 ~ 1,
+                             MARSTAT >= 3 & MARSTAT <= 5 ~ 2,
+                             MARSTAT >= 6 ~ 3))
+
+#1.4.3. parOcipaOon in religious acOviOes is put in reverse order, from Not at all to At least once a week;
+final_data$religious_activity = recode(final_data$REE_02, `1` = 4, `2` = 3, `3` = 2, `4` = 1, `5` = 0)
+
+
+
+#1.4.4. Valid skip, don’t know, Refusal, and Not stated values become missing values (NA).
+#Regan - this step is unclear if it applies to all the variables or specific ones
+#I don't think I need to do this as I used mutate and case_when
+
+
+#1.5. Drop any cases where the dependent variable is missing. 
+
+#Generate tables of summary staOsOcs for all variables: (t)
+#2.1. five-number summary with mean and standard deviaOon for numeric data;
+#regan - its unclear what you mean by all variables since there are 50 of them - do you mean just the ones I've coded
+tbl_1 = final_data %>% 
+  gtsummary::tbl_summary(include = c(marstatus, 
+                          age, 
+                            female, 
+                            VM, 
+                            religious_activity, 
+                            birth_place),
+              type = list(age ~ 'continuous',
+                          religious_activity ~ 'categorical'),
+  by        = female,
+              
+              statistic = list(all_continuous()  ~ "{mean} ({sd})",
+                               all_dichotomous() ~ "0.{p}",
+                               all_categorical() ~ "0.{p}"),
+              
+              digits    = list(all_continuous()  ~ 2,
+                               all_categorical() ~ 0)) %>% 
+  
+gtsummary::modify_header(update = list(label  ~ '**Variables**',
+                              stat_1 ~ '**Male ({n})**', 
+                              stat_2 ~ '**Female({n})**')) %>% 
+  
+gtsummary::modify_footnote(update = c(stat_1, stat_2) ~ 
+                  'Mean and standard deviations provided for continuous 
+                  variables. Proportions provided for categorical variables') %>% 
+  
+gtsummary::modify_caption('**TABLE 1. DESCRIPTIVE STATISTICS **') %>%
+
+  gtsummary::bold_labels()
+
+
+#Run a mulOnomial logisOc regression of childcare preferences on the included demographic
+#variables, with Parent care as the baseline, and a type II analysis of deviance of the results to idenOfy the “significant” variables.
+
+#its unclear what you mean by 'parent care'
+
+#Generate summary tables of the regression coefficients and the analysis of deviance. (t)
+#this is also unclear so i've let it for now. 
+```
